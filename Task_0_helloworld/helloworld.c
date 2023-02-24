@@ -7,5 +7,6 @@ int main (int argc, char *argv [])
 	MPI_Comm_size (MPI_COMM_WORLD, &commsize);
 	MPI_Comm_rank (MPI_COMM_WORLD, &my_rank);
 	printf ("Communicator size = %d My rank= %d\n", commsize, my_rank);
+	printf ("argc = %d", argc);
 	MPI_Finalize ();
 }
