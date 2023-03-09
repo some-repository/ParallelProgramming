@@ -20,7 +20,7 @@ int main (int argc, char *argv [])
 		var = atoi (argv [1]);
 		printf ("var = %d (initial value)\n", var);
 
-		var = var++;
+		var++;
 		printf ("My rank = %d, var = %d\n", my_rank, var);
 
 		MPI_Send (&var, 1, MPI_INT, my_rank + 1, 0, MPI_COMM_WORLD);
@@ -32,7 +32,7 @@ int main (int argc, char *argv [])
 	{
 		MPI_Recv (&var, 1, MPI_INT, my_rank - 1, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 
-		var = var++;
+		var++;
 		printf ("My rank = %d, var = %d\n", my_rank, var);
 
 		if (my_rank < commsize - 1)
