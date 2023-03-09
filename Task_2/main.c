@@ -18,7 +18,7 @@ int main (int argc, char *argv [])
 
 	if (my_rank == 0)
 	{
-		printf ("N = %d\n", N);
+		//printf ("N = %d\n", N);
 
 		if (N % commsize == 0)
 		{
@@ -68,7 +68,7 @@ double sum_elements (int my_rank, unsigned int epp, int N)
 			break;
 		}
 		sum += 1 / (double) i;
-		printf ("My rank = %d, i = %d\n", my_rank, i);
+		//printf ("My rank = %d, i = %d\n", my_rank, i);
 	}
 	return sum;
 }
