@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+double sum_elements (int my_rank, unsigned int epp, int N);
+
 int main (int argc, char *argv [])
 {
 	MPI_Init (&argc, &argv);
@@ -45,11 +47,11 @@ int main (int argc, char *argv [])
 	}
 	else
 	{
-		MPI_Recv (&epp, 1, MPI_UNSIGNED, i, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+		MPI_Recv (&epp, 1, MPI_UNSIGNED, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 
 		double sum = sum_elements (my_rank, epp, N);
 
-		MPI_Send (&sum, 1, MPI_DOUBLE, i, MPI_ANY_TAG, MPI_COMM_WORLD);
+		MPI_Send (&sum, 1, MPI_DOUBLE, 0, MPI_ANY_TAG, MPI_COMM_WORLD);
 	}
 
 	MPI_Finalize ();
