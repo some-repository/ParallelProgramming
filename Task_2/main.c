@@ -13,7 +13,7 @@ int main (int argc, char *argv [])
 	MPI_Comm_size (MPI_COMM_WORLD, &commsize);
 	MPI_Comm_rank (MPI_COMM_WORLD, &my_rank);
 
-	int N = atoi (argv [0]);
+	int N = atoi (argv [1]);
 	unsigned int epp = 0;
 
 	if (my_rank == 0)
@@ -31,7 +31,7 @@ int main (int argc, char *argv [])
 
 		for (int i = 1; i < commsize; i++)
 		{
-			MPI_Send (&epp, 1, MPI_UNSIGNED, i, MPI_ANY_TAG, MPI_COMM_WORLD);
+			MPI_Send (&epp, 1, MPI_UNSIGNED, i, 0, MPI_COMM_WORLD); // tag = 0
 		}
 
 		double sum = sum_elements (my_rank, epp, N);
@@ -43,7 +43,7 @@ int main (int argc, char *argv [])
 			sum += tmp;
 		}
 
-		printf ("sum = %f", sum);
+		printf ("sum = %f\n", sum);
 	}
 	else
 	{
@@ -51,7 +51,7 @@ int main (int argc, char *argv [])
 
 		double sum = sum_elements (my_rank, epp, N);
 
-		MPI_Send (&sum, 1, MPI_DOUBLE, 0, MPI_ANY_TAG, MPI_COMM_WORLD);
+		MPI_Send (&sum, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD); // tag = 0
 	}
 
 	MPI_Finalize ();
@@ -67,7 +67,7 @@ double sum_elements (int my_rank, unsigned int epp, int N)
 		{
 			break;
 		}
-		sum += 1 / i;
+		sum += 1 / (double) i;
 		printf ("My rank = %d, i = %d\n", my_rank, i);
 	}
 	return sum;
