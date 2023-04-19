@@ -1,26 +1,30 @@
 #include <stdio.h>
+#include <fcntl.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include <sys/unistd.h>
 #include <math.h>
 
 // solve differential equation U't + a*U'x = f (x, t)
 
 double psi (double t); // U (0, t) = psi (t)
 double phi (double x); // U (x, 0) = phi (t)
-double f (double x, double t); // the right part of differential equation
-
+double f (double x, double t); // the right part of the differential equation
 double U_analytical (double x, double t);
+
+void print_array_to_file (const char * filename, double ** arr, size_t str_num, size_t col_num);
 
 int main (void)
 {
-	const double T = 10; // maximum value of t axis
-	const int K = 10 * 1000; // maximum number of element of t axis
+	const double a = 2; // coefficient of the differential equation
+
+	const double T = 1; // maximum value of t axis
+	const int K = 10 * 25; // maximum number of element of t axis
 	const double tau = T / K; // time step
 
-	const double X = 100; // maximum value of x axis
-	const int M = 10 * 1000; // maximum number of element of x axis
+	const double X = 1; // maximum value of x axis
+	const int M = 10 * 10; // maximum number of element of x axis
 	const double h = X / M; // x step
-
-	const double a = 0.1; // coefficient of differential equation
 
 	double ** U_arr = (double **) calloc (K + 1, sizeof (double *));
     if (U_arr == NULL)
@@ -58,6 +62,8 @@ int main (void)
 		}
 	}
 
+	print_array_to_file ("solution.txt", U_arr, K + 1, M + 1);
+
 	for (int k = 0; k < K + 1; k++)
     {
         free (U_arr [k]);
@@ -67,22 +73,56 @@ int main (void)
 	return 0;
 }
 
+void print_array_to_file (const char * filename, double ** arr, size_t str_num, size_t col_num)
+{
+	int fd = open (filename, O_WRONLY | O_CREAT | O_TRUNC, 0777); // fd - file descriptor, link to file
+														    // O_WRONLY - the file will be opened for writing only
+                                                            // O_TRUNC - if the file already exists and is a regular file and the access mode allows writing it will be truncated to length 0
+                                                            // O_CREAT - if pathname does not exist, create it as a regular file
+    if (fd < 0)
+	{
+		perror ("Failed to open file for writing");
+		exit (EXIT_FAILURE);
+	}
+
+	for (size_t i = 0; i < str_num; i++)
+	{
+		for (size_t j = 0; j < col_num; j++)
+		{
+			if (dprintf (fd, "%E ", arr [i][j]) < 0)  // check if something has been written
+			{
+	        	perror ("Failed to write to file");
+	        	close (fd);
+	        	exit (EXIT_FAILURE);
+    		}
+		}
+		if (dprintf (fd, "\n") < 0) // add new line
+		{
+	       	perror ("Failed to write to file");
+	       	close (fd);
+	       	exit (EXIT_FAILURE);
+    	}
+	}
+
+    close (fd);
+}
+
 double psi (double t)
 {
-	return 2 * t;
+	return exp (-t);
 }
 
 double phi (double x)
 {
-	return 3 * x;
+	return cos (M_PI * x);
 }
 
 double f (double x, double t)
 {
-	return 0;
+	return x + t;
 }
 
 double U_analytical (double x, double t)
 {
-
+	return 0;
 }
