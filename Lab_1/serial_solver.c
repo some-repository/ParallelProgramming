@@ -22,11 +22,11 @@ int main (void)
 	const double a = 2; // coefficient of the differential equation
 
 	const double T = 1; // maximum value of t axis
-	const int K = 10 * 1000; // maximum number of element of t axis
+	const int K = 20; // maximum number of element of t axis
 	const double tau = T / K; // time step
 
 	const double X = 1; // maximum value of x axis
-	const int M = 10 * 1000; // maximum number of element of x axis
+	const int M = 20; // maximum number of element of x axis
 	const double h = X / M; // x step
 
 	double ** U_arr = allocate_2D_array (K, M);
@@ -52,7 +52,7 @@ int main (void)
 	}
 
 	printf ("Max error = %E\n", find_max_error (U_arr, K + 1, M + 1, tau, h));
-	print_array_to_file ("solution.txt", U_arr, K + 1, M + 1);
+	print_array_to_file ("solution.csv", U_arr, K + 1, M + 1);
 
     free_2D_array (U_arr, K);
 	return 0;
@@ -104,14 +104,14 @@ void print_array_to_file (const char * filename, double ** arr, size_t str_num, 
 	{
 		for (size_t j = 0; j < col_num; j++)
 		{
-			if (dprintf (fd, "%E ", arr [i][j]) < 0)  // check if something has been written
+			if (dprintf (fd, "%f, ", arr [i][j]) < 0)  // check if something has been written
 			{
 	        	perror ("Failed to write to file");
 	        	close (fd);
 	        	exit (EXIT_FAILURE);
     		}
 		}
-		if (dprintf (fd, "\n") < 0) // add new line
+		if (dprintf (fd, "\n") < 0) // write the last number in the line and add new line
 		{
 	       	perror ("Failed to write to file");
 	       	close (fd);
