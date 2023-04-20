@@ -58,7 +58,7 @@ int main (void)
 	{
 		for (int m = 1; m < M + 1; m++)
 		{
-			U_arr [k + 1][m] = 2 * f ((m - (1 / 2)) * h, (k + (1 / 2)) * tau) + U_arr [k][m - 1] * ((1 / tau) + (a / h)) + U_arr [k][m] * ((1 / tau) - (a / h)) + U_arr [k + 1][m - 1] * ((a / h) - (1 / tau));
+			U_arr [k + 1][m] = (2 * f ((m - 0.5) * h, (k + 0.5) * tau) + U_arr [k][m - 1] * ((1 / tau) + (a / h)) + U_arr [k][m] * ((1 / tau) - (a / h)) + U_arr [k + 1][m - 1] * ((a / h) - (1 / tau))) / ((1 / tau) + (a / h));
 		}
 	}
 
