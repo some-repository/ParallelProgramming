@@ -111,7 +111,7 @@ void print_array_to_file (const char * filename, double ** arr, size_t str_num, 
 	        	exit (EXIT_FAILURE);
     		}
 		}
-		if (dprintf (fd, "\n") < 0) // write the last number in the line and add new line
+		if (dprintf (fd, "\n") < 0) // and add new line
 		{
 	       	perror ("Failed to write to file");
 	       	close (fd);
