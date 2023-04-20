@@ -11,7 +11,10 @@ double psi (double t); // U (0, t) = psi (t)
 double phi (double x); // U (x, 0) = phi (t)
 double f (double x, double t); // the right part of the differential equation
 double U_analytical (double x, double t);
+double find_max_error (double ** U_arr, size_t str_num, size_t col_num, double tau, double h);
 
+double ** allocate_2D_array (size_t str_num, size_t col_num);
+void free_2D_array (double ** array, size_t str_num);
 void print_array_to_file (const char * filename, double ** arr, size_t str_num, size_t col_num);
 
 int main (void)
@@ -19,28 +22,14 @@ int main (void)
 	const double a = 2; // coefficient of the differential equation
 
 	const double T = 1; // maximum value of t axis
-	const int K = 10 * 25; // maximum number of element of t axis
+	const int K = 10 * 1000; // maximum number of element of t axis
 	const double tau = T / K; // time step
 
 	const double X = 1; // maximum value of x axis
-	const int M = 10 * 10; // maximum number of element of x axis
+	const int M = 10 * 1000; // maximum number of element of x axis
 	const double h = X / M; // x step
 
-	double ** U_arr = (double **) calloc (K + 1, sizeof (double *));
-    if (U_arr == NULL)
-    {
-    	fprintf (stderr, "U_arr pointer is NULL\n");
-    	return 1;
-    }
-    for (int k = 0; k < K + 1; k++)
-    {
-        U_arr [k] = calloc (M + 1, sizeof (double));
-        if (U_arr [k] == NULL)
-    	{
-    		fprintf (stderr, "U_arr pointer is NULL\n");
-    		return 1;
-    	}
-    }
+	double ** U_arr = allocate_2D_array (K, M);
 
 	for (int m = 0; m < M + 1; m++) // set boundary condition for t = 0
 	{
@@ -62,15 +51,41 @@ int main (void)
 		}
 	}
 
+	printf ("Max error = %E\n", find_max_error (U_arr, K + 1, M + 1, tau, h));
 	print_array_to_file ("solution.txt", U_arr, K + 1, M + 1);
 
-	for (int k = 0; k < K + 1; k++)
-    {
-        free (U_arr [k]);
-    }
-    free (U_arr);
-
+    free_2D_array (U_arr, K);
 	return 0;
+}
+
+double ** allocate_2D_array (size_t str_num, size_t col_num)
+{
+	double ** arr = (double **) calloc (str_num + 1, sizeof (double *));
+    if (arr == NULL)
+    {
+    	fprintf (stderr, "U_arr pointer is NULL\n");
+    	exit (EXIT_FAILURE);
+    }
+    for (int k = 0; k < str_num + 1; k++)
+    {
+        arr [k] = calloc (col_num + 1, sizeof (double));
+        if (arr [k] == NULL)
+    	{
+    		fprintf (stderr, "U_arr pointer is NULL\n");
+    		exit (EXIT_FAILURE);
+    	}
+    }
+
+    return arr;
+}
+
+void free_2D_array (double ** array, size_t str_num)
+{
+	for (int k = 0; k < str_num + 1; k++)
+    {
+        free (array [k]);
+    }
+    free (array);
 }
 
 void print_array_to_file (const char * filename, double ** arr, size_t str_num, size_t col_num)
@@ -124,5 +139,31 @@ double f (double x, double t)
 
 double U_analytical (double x, double t)
 {
-	return 0;
+	if ((2 * t - x) <= 0)
+	{
+		return (x * t - (t * t) / 2 + cos (M_PI * (2 * t - x)));
+	}
+	else
+	{
+		return (x * t - (t * t) / 2 + (2 * t - x) * (2 * t - x) / 8 + exp (-(t - x / 2)));
+	}
+}
+
+double find_max_error (double ** U_arr, size_t str_num, size_t col_num, double tau, double h)
+{
+	double max_error = 0;
+	double error = 0;
+	for (int k = 0; k < str_num; k++)
+	{
+		for (int m = 0; m < col_num; m++)
+		{
+			error = fabs (U_arr [k][m] - U_analytical (m * h, k * tau));
+			if (error > max_error)
+			{
+				max_error = error;
+			}
+		}
+	}
+
+	return max_error;
 }
