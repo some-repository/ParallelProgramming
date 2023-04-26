@@ -29,7 +29,7 @@ int main (void)
 	const int M = 20; // maximum number of element of x axis
 	const double h = X / M; // x step
 
-	double ** U_arr = allocate_2D_array (K, M);
+	double ** U_arr = allocate_2D_array (K + 1, M + 1);
 
 	for (int m = 0; m < M + 1; m++) // set boundary condition for t = 0
 	{
@@ -54,21 +54,21 @@ int main (void)
 	printf ("Max error = %E\n", find_max_error (U_arr, K + 1, M + 1, tau, h));
 	print_array_to_file ("solution.csv", U_arr, K + 1, M + 1);
 
-    free_2D_array (U_arr, K);
+    free_2D_array (U_arr, K + 1);
 	return 0;
 }
 
 double ** allocate_2D_array (size_t str_num, size_t col_num)
 {
-	double ** arr = (double **) calloc (str_num + 1, sizeof (double *));
+	double ** arr = (double **) calloc (str_num, sizeof (double *));
     if (arr == NULL)
     {
     	fprintf (stderr, "U_arr pointer is NULL\n");
     	exit (EXIT_FAILURE);
     }
-    for (int k = 0; k < str_num + 1; k++)
+    for (int k = 0; k < str_num; k++)
     {
-        arr [k] = calloc (col_num + 1, sizeof (double));
+        arr [k] = calloc (col_num, sizeof (double));
         if (arr [k] == NULL)
     	{
     		fprintf (stderr, "U_arr pointer is NULL\n");
@@ -81,7 +81,7 @@ double ** allocate_2D_array (size_t str_num, size_t col_num)
 
 void free_2D_array (double ** array, size_t str_num)
 {
-	for (int k = 0; k < str_num + 1; k++)
+	for (int k = 0; k < str_num; k++)
     {
         free (array [k]);
     }
