@@ -16,8 +16,9 @@ double find_max_error (double ** U_arr, size_t str_num, size_t col_num, double t
 
 double ** allocate_2D_array (size_t str_num, size_t col_num);
 void free_2D_array (double ** array, size_t str_num);
+void print_array_to_file (const char * filename, double ** arr, size_t str_num, size_t col_num);
 
-int main (void)
+int main (int argc, char *argv [])
 {
 	int commsize, my_rank;
 	MPI_Status status;
@@ -143,4 +144,38 @@ void free_2D_array (double ** array, size_t str_num)
         free (array [k]);
     }
     free (array);
+}
+
+void print_array_to_file (const char * filename, double ** arr, size_t str_num, size_t col_num)
+{
+	int fd = open (filename, O_WRONLY | O_CREAT | O_TRUNC, 0777); // fd - file descriptor, link to file
+														    // O_WRONLY - the file will be opened for writing only
+                                                            // O_TRUNC - if the file already exists and is a regular file and the access mode allows writing it will be truncated to length 0
+                                                            // O_CREAT - if pathname does not exist, create it as a regular file
+    if (fd < 0)
+	{
+		perror ("Failed to open file for writing");
+		exit (EXIT_FAILURE);
+	}
+
+	for (size_t i = 0; i < str_num; i++)
+	{
+		for (size_t j = 0; j < col_num; j++)
+		{
+			if (dprintf (fd, "%f, ", arr [i][j]) < 0)  // check if something has been written
+			{
+	        	perror ("Failed to write to file");
+	        	close (fd);
+	        	exit (EXIT_FAILURE);
+    		}
+		}
+		if (dprintf (fd, "\n") < 0) // and add new line
+		{
+	       	perror ("Failed to write to file");
+	       	close (fd);
+	       	exit (EXIT_FAILURE);
+    	}
+	}
+
+    close (fd);
 }

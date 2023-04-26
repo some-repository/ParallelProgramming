@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <sys/unistd.h>
 #include <math.h>
+#include <mpi.h>
 
 // solve differential equation U't + a*U'x = f (x, t)
 
@@ -17,7 +18,7 @@ double ** allocate_2D_array (size_t str_num, size_t col_num);
 void free_2D_array (double ** array, size_t str_num);
 void print_array_to_file (const char * filename, double ** arr, size_t str_num, size_t col_num);
 
-int main (void)
+int main (int argc, char *argv [])
 {
 	const double a = 2; // coefficient of the differential equation
 
@@ -30,6 +31,9 @@ int main (void)
 	const double h = X / M; // x step
 
 	double ** U_arr = allocate_2D_array (K + 1, M + 1);
+
+	MPI_Init (&argc, &argv); // MPI is used only for time measurement
+	double t_start = MPI_Wtime ();
 
 	for (int m = 0; m < M + 1; m++) // set boundary condition for t = 0
 	{
@@ -50,6 +54,10 @@ int main (void)
 			U_arr [k + 1][m] = (2 * f ((m - 0.5) * h, (k + 0.5) * tau) + U_arr [k][m - 1] * ((1 / tau) + (a / h)) + U_arr [k][m] * ((1 / tau) - (a / h)) + U_arr [k + 1][m - 1] * ((a / h) - (1 / tau))) / ((1 / tau) + (a / h));
 		}
 	}
+
+	double t_stop = MPI_Wtime ();
+	MPI_Finalize ();
+	printf ("time = %f s\n", t_stop - t_start);
 
 	printf ("Max error = %E\n", find_max_error (U_arr, K + 1, M + 1, tau, h));
 	print_array_to_file ("solution.csv", U_arr, K + 1, M + 1);
