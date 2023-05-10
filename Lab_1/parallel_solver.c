@@ -38,32 +38,144 @@ int main (int argc, char *argv [])
 
 	// main code should be placed here
 	size_t k = my_rank; // number of t moment
+	size_t task_size = 0;
+
+	size_t common_task_size = 0;
+	if ((M + 1) >= commsize)
+	{
+		common_task_size = (M + 1) / commsize;
+	}
+	else
+	{
+		common_task_size = 1;
+	}
 
 	if (my_rank == 0)
 	{
-		double ** U_arr = allocate_2D_array (K + 1, M + 1);
-		for (int m = 0; m < M + 1; m++) // set boundary condition for t = 0
+		if ((M + 1) >= commsize)
+		{
+			task_size = (M + 1) / commsize;
+		}
+		else
+		{
+			task_size = 1;
+		}
+
+		double ** U_arr = allocate_2D_array (K + 1, M + 1); // here the whole solution will be stored
+
+		for (size_t m = 0; m < task_size; m++) // set boundary condition for t = 0
 		{
 			double x = m * h;
 			U_arr [0][m] = phi (x);
 		}
+		for (size_t k = 0; k < K + 1; k++) // set boundary condition for x = 0
+		{
+			double t = k * tau;
+			U_arr [k][0] = psi (t);
+		}
+
+		for (size_t k = 0; k < K; k++)
+		{
+			for (size_t m = 1; m < task_size; m++)
+			{
+				U_arr [k + 1][m] = (2 * f ((m - 0.5) * h, (k + 0.5) * tau) + U_arr [k][m - 1] * ((1 / tau) + (a / h)) + U_arr [k][m] * ((1 / tau) - (a / h)) + U_arr [k + 1][m - 1] * ((a / h) - (1 / tau))) / ((1 / tau) + (a / h));
+				//printf ("My rank = %d, m = %d, k = %d\n", my_rank, m, k);
+			}
+
+			MPI_Send (&U_arr [k + 1][task_size], 1, MPI_DOUBLE_PRECISION, 1, 0, MPI_COMM_WORLD);
+			printf ("My rank = %d, sent value to 1st process\n", my_rank);
+		}
+
+		size_t proc_used = commsize;
+		if (commsize > (M + 1))
+		{
+			proc_used = M + 1;
+		}
+
+		printf ("Collecting results\n");
+
+		for (size_t m = 1; m < proc_used; m++) // receive parts of solution to the common array U_arr
+		{
+			size_t count = common_task_size;
+			if ((M + 1 - m * common_task_size) < (2 * common_task_size))
+			{
+				count = common_task_size + ((M + 1) % commsize);
+			}
+
+			for (size_t k = 0; k < K + 1; k++)
+			{
+				MPI_Recv (&U_arr [k][m * common_task_size], count, MPI_DOUBLE_PRECISION, m, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+			}
+		}
 
 		printf ("Max error = %E\n", find_max_error (U_arr, K + 1, M + 1, tau, h));
-		print_array_to_file ("solution.csv", U_arr, K + 1, M + 1);		
+		print_array_to_file ("parallel_solution.csv", U_arr, K + 1, M + 1);		
 		free_2D_array (U_arr, K + 1);
 	}
 	else
 	{
-		double * x_arr = (double *) calloc (M + 1, sizeof (double *)); // allocate an array for x values in a fixed t moment
-    	if (x_arr == NULL)
-    	{
-    		fprintf (stderr, "x_arr pointer is NULL\n");
-    		exit (EXIT_FAILURE);
-    	}
+		if ((M + 1) >= commsize)
+		{
+			if (my_rank == (commsize - 1))
+			{
+				task_size = common_task_size + ((M + 1) % commsize);
+			}
+			else
+			{
+				task_size = common_task_size;
+			}
+		}
+		else
+		{
+			if (my_rank < (M + 1))
+			{
+				task_size = 1;
+			}
+			else
+			{
+				task_size = 0;
+			}
+		}
+		printf ("My rank = %d, task_size = %ld\n", my_rank, task_size);
 
-    	x_arr [0] = psi (k * tau); // set boundary condition for x = 0
+		if (task_size >= 1)
+		{
+			printf ("My rank = %d, commsize = %d\n", my_rank, commsize);
 
-    	free (x_arr);
+			double ** U_arr_part = allocate_2D_array (K + 1, task_size + 1);
+
+    		for (size_t m = 0; m < task_size + 1; m++) // set boundary condition for t = 0
+			{
+				double x = (my_rank * common_task_size - 1 + m) * h;
+				U_arr_part [0][m] = phi (x);
+			}
+
+			for (size_t k = 0; k < K; k++)
+			{
+				MPI_Recv (&U_arr_part [k + 1][0], 1, MPI_DOUBLE_PRECISION, my_rank - 1, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+				printf ("My rank = %d, k = %ld, received value from previous process\n", my_rank, k);
+
+				for (size_t m = 1; m < task_size; m++)
+				{
+					U_arr_part [k + 1][m] = (2 * f ((m - 0.5) * h, (k + 0.5) * tau) + U_arr_part [k][m - 1] * ((1 / tau) + (a / h)) + U_arr_part [k][m] * ((1 / tau) - (a / h)) + U_arr_part [k + 1][m - 1] * ((a / h) - (1 / tau))) / ((1 / tau) + (a / h));
+				}
+
+				if ((my_rank * common_task_size + task_size) < M + 1)
+				{
+					MPI_Send (&U_arr_part [k + 1][task_size], 1, MPI_DOUBLE_PRECISION, my_rank + 1, 0, MPI_COMM_WORLD);
+				}
+			}
+
+			printf ("My rank = %d, computing done\n", my_rank);
+
+			for (size_t k = 0; k < K + 1; k++) // send parts of solution to the common array
+			{
+				MPI_Send (&U_arr_part [k][1], task_size, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD);
+				printf ("My rank = %d, part of %ld string was sent\n", my_rank, k);
+			}
+
+    		free_2D_array (U_arr_part, K + 1);
+		}
 	}
 
 	MPI_Finalize ();
