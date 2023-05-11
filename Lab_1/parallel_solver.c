@@ -1,4 +1,4 @@
-#define PRINT_SOLUTION_TO_FILE
+//#define PRINT_SOLUTION_TO_FILE // uncomment this line to get solution in .csv file
 
 #include <stdio.h>
 #include <fcntl.h>
