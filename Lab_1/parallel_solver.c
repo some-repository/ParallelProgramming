@@ -1,3 +1,5 @@
+#define PRINT_SOLUTION_TO_FILE
+
 #include <stdio.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -5,6 +7,10 @@
 #include <sys/unistd.h>
 #include <math.h>
 #include <mpi.h>
+
+#ifndef M_PI // in some versions math.h doesn't contain M_PI constant
+    #define M_PI 3.14159265358979323846
+#endif
 
 // solve differential equation U't + a*U'x = f (x, t)
 
@@ -29,11 +35,11 @@ int main (int argc, char *argv [])
 	const double a = 2; // coefficient of the differential equation
 
 	const double T = 1; // maximum value of t axis
-	const int K = 20; // maximum number of element of t axis
+	const int K = 1000; // maximum number of element of t axis
 	const double tau = T / K; // time step
 
 	const double X = 1; // maximum value of x axis
-	const int M = 20; // maximum number of element of x axis
+	const int M = 1000; // maximum number of element of x axis
 	const double h = X / M; // x step
 
 	size_t task_size = 0;
@@ -71,11 +77,9 @@ int main (int argc, char *argv [])
 			for (size_t m = 1; m < task_size; m++)
 			{
 				U_arr [k + 1][m] = (2 * f ((m - 0.5) * h, (k + 0.5) * tau) + U_arr [k][m - 1] * ((1 / tau) + (a / h)) + U_arr [k][m] * ((1 / tau) - (a / h)) + U_arr [k + 1][m - 1] * ((a / h) - (1 / tau))) / ((1 / tau) + (a / h));
-				//printf ("My rank = %d, m = %d, k = %d\n", my_rank, m, k);
 			}
 
 			MPI_Send (&U_arr [k + 1][task_size - 1], 1, MPI_DOUBLE_PRECISION, 1, 0, MPI_COMM_WORLD);
-			//printf ("My rank = %d, sent value to 1st process\n", my_rank);
 		}
 
 		size_t proc_used = commsize;
@@ -83,8 +87,6 @@ int main (int argc, char *argv [])
 		{
 			proc_used = M + 1;
 		}
-
-		//printf ("Collecting results\n");
 
 		for (size_t m = 1; m < proc_used; m++) // receive parts of solution to the common array U_arr
 		{
@@ -102,9 +104,12 @@ int main (int argc, char *argv [])
 
 		double t_stop = MPI_Wtime ();
 		printf ("time = %f s\n", t_stop - t_start);
-
 		printf ("Max error = %E\n", find_max_error (U_arr, K + 1, M + 1, tau, h));
-		print_array_to_file ("parallel_solution.csv", U_arr, K + 1, M + 1);		
+
+		#if defined (PRINT_SOLUTION_TO_FILE)
+        	print_array_to_file ("parallel_solution.csv", U_arr, K + 1, M + 1);
+    	#endif //PRINT_SOLUTION_TO_FILE
+				
 		free_2D_array (U_arr, K + 1);
 	}
 	else
@@ -131,12 +136,9 @@ int main (int argc, char *argv [])
 				task_size = 0;
 			}
 		}
-		//printf ("My rank = %d, task_size = %ld\n", my_rank, task_size);
 
 		if (task_size >= 1)
 		{
-			//printf ("My rank = %d, commsize = %d\n", my_rank, commsize);
-
 			double ** U_arr_part = allocate_2D_array (K + 1, task_size + 1);
 
     		for (size_t m = 0; m < task_size + 1; m++) // set boundary condition for t = 0
@@ -148,7 +150,6 @@ int main (int argc, char *argv [])
 			for (size_t k = 0; k < K; k++)
 			{
 				MPI_Recv (&U_arr_part [k + 1][0], 1, MPI_DOUBLE_PRECISION, my_rank - 1, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-				//printf ("My rank = %d, k = %ld, received value %f from previous process\n", my_rank, k, U_arr_part [k + 1][0]);
 
 				for (size_t m = 1; m < task_size + 1; m++)
 				{
@@ -161,15 +162,12 @@ int main (int argc, char *argv [])
 				}
 			}
 
-			//printf ("My rank = %d, computing done\n", my_rank);
-
 			for (size_t k = 0; k < K + 1; k++) // send parts of solution to the common array
 			{
 				MPI_Send (&U_arr_part [k][1], task_size, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD);
-				//printf ("My rank = %d, part of %ld string was sent, last element = %f\n", my_rank, k, U_arr_part [k][task_size]);
 			}
 
-			print_array_to_file ("parallel_solution_part.csv", U_arr_part, K + 1, task_size + 1);	
+			//print_array_to_file ("parallel_solution_part.csv", U_arr_part, K + 1, task_size + 1);	
     		free_2D_array (U_arr_part, K + 1);
 		}
 	}

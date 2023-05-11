@@ -1,3 +1,5 @@
+#define PRINT_SOLUTION_TO_FILE
+
 #include <stdio.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -5,6 +7,10 @@
 #include <sys/unistd.h>
 #include <math.h>
 #include <mpi.h>
+
+#ifndef M_PI // in some versions math.h doesn't contain M_PI constant
+    #define M_PI 3.14159265358979323846
+#endif
 
 // solve differential equation U't + a*U'x = f (x, t)
 
@@ -23,11 +29,11 @@ int main (int argc, char *argv [])
 	const double a = 2; // coefficient of the differential equation
 
 	const double T = 1; // maximum value of t axis
-	const int K = 20; // maximum number of element of t axis
+	const int K = 1000; // maximum number of element of t axis
 	const double tau = T / K; // time step
 
 	const double X = 1; // maximum value of x axis
-	const int M = 20; // maximum number of element of x axis
+	const int M = 1000; // maximum number of element of x axis
 	const double h = X / M; // x step
 
 	MPI_Init (&argc, &argv); // MPI is used only for time measurement
@@ -58,9 +64,11 @@ int main (int argc, char *argv [])
 	double t_stop = MPI_Wtime ();
 	MPI_Finalize ();
 	printf ("time = %f s\n", t_stop - t_start);
-
 	printf ("Max error = %E\n", find_max_error (U_arr, K + 1, M + 1, tau, h));
-	print_array_to_file ("solution.csv", U_arr, K + 1, M + 1);
+	
+	#if defined (PRINT_SOLUTION_TO_FILE)
+		print_array_to_file ("solution.csv", U_arr, K + 1, M + 1);
+    #endif //PRINT_SOLUTION_TO_FILE
 
     free_2D_array (U_arr, K + 1);
 	return 0;
