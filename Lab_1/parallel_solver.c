@@ -36,10 +36,7 @@ int main (int argc, char *argv [])
 	const int M = 20; // maximum number of element of x axis
 	const double h = X / M; // x step
 
-	// main code should be placed here
-	size_t k = my_rank; // number of t moment
 	size_t task_size = 0;
-
 	size_t common_task_size = 0;
 	if ((M + 1) >= commsize)
 	{
@@ -52,14 +49,9 @@ int main (int argc, char *argv [])
 
 	if (my_rank == 0)
 	{
-		if ((M + 1) >= commsize)
-		{
-			task_size = (M + 1) / commsize;
-		}
-		else
-		{
-			task_size = 1;
-		}
+		double t_start = MPI_Wtime ();
+
+		task_size = common_task_size;
 
 		double ** U_arr = allocate_2D_array (K + 1, M + 1); // here the whole solution will be stored
 
@@ -82,8 +74,8 @@ int main (int argc, char *argv [])
 				//printf ("My rank = %d, m = %d, k = %d\n", my_rank, m, k);
 			}
 
-			MPI_Send (&U_arr [k + 1][task_size], 1, MPI_DOUBLE_PRECISION, 1, 0, MPI_COMM_WORLD);
-			printf ("My rank = %d, sent value to 1st process\n", my_rank);
+			MPI_Send (&U_arr [k + 1][task_size - 1], 1, MPI_DOUBLE_PRECISION, 1, 0, MPI_COMM_WORLD);
+			//printf ("My rank = %d, sent value to 1st process\n", my_rank);
 		}
 
 		size_t proc_used = commsize;
@@ -92,7 +84,7 @@ int main (int argc, char *argv [])
 			proc_used = M + 1;
 		}
 
-		printf ("Collecting results\n");
+		//printf ("Collecting results\n");
 
 		for (size_t m = 1; m < proc_used; m++) // receive parts of solution to the common array U_arr
 		{
@@ -107,6 +99,9 @@ int main (int argc, char *argv [])
 				MPI_Recv (&U_arr [k][m * common_task_size], count, MPI_DOUBLE_PRECISION, m, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 			}
 		}
+
+		double t_stop = MPI_Wtime ();
+		printf ("time = %f s\n", t_stop - t_start);
 
 		printf ("Max error = %E\n", find_max_error (U_arr, K + 1, M + 1, tau, h));
 		print_array_to_file ("parallel_solution.csv", U_arr, K + 1, M + 1);		
@@ -136,11 +131,11 @@ int main (int argc, char *argv [])
 				task_size = 0;
 			}
 		}
-		printf ("My rank = %d, task_size = %ld\n", my_rank, task_size);
+		//printf ("My rank = %d, task_size = %ld\n", my_rank, task_size);
 
 		if (task_size >= 1)
 		{
-			printf ("My rank = %d, commsize = %d\n", my_rank, commsize);
+			//printf ("My rank = %d, commsize = %d\n", my_rank, commsize);
 
 			double ** U_arr_part = allocate_2D_array (K + 1, task_size + 1);
 
@@ -153,11 +148,11 @@ int main (int argc, char *argv [])
 			for (size_t k = 0; k < K; k++)
 			{
 				MPI_Recv (&U_arr_part [k + 1][0], 1, MPI_DOUBLE_PRECISION, my_rank - 1, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-				printf ("My rank = %d, k = %ld, received value from previous process\n", my_rank, k);
+				//printf ("My rank = %d, k = %ld, received value %f from previous process\n", my_rank, k, U_arr_part [k + 1][0]);
 
-				for (size_t m = 1; m < task_size; m++)
+				for (size_t m = 1; m < task_size + 1; m++)
 				{
-					U_arr_part [k + 1][m] = (2 * f ((m - 0.5) * h, (k + 0.5) * tau) + U_arr_part [k][m - 1] * ((1 / tau) + (a / h)) + U_arr_part [k][m] * ((1 / tau) - (a / h)) + U_arr_part [k + 1][m - 1] * ((a / h) - (1 / tau))) / ((1 / tau) + (a / h));
+					U_arr_part [k + 1][m] = (2 * f ((my_rank * common_task_size + m - 1 - 0.5) * h, (k + 0.5) * tau) + U_arr_part [k][m - 1] * ((1 / tau) + (a / h)) + U_arr_part [k][m] * ((1 / tau) - (a / h)) + U_arr_part [k + 1][m - 1] * ((a / h) - (1 / tau))) / ((1 / tau) + (a / h));
 				}
 
 				if ((my_rank * common_task_size + task_size) < M + 1)
@@ -166,14 +161,15 @@ int main (int argc, char *argv [])
 				}
 			}
 
-			printf ("My rank = %d, computing done\n", my_rank);
+			//printf ("My rank = %d, computing done\n", my_rank);
 
 			for (size_t k = 0; k < K + 1; k++) // send parts of solution to the common array
 			{
 				MPI_Send (&U_arr_part [k][1], task_size, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD);
-				printf ("My rank = %d, part of %ld string was sent\n", my_rank, k);
+				//printf ("My rank = %d, part of %ld string was sent, last element = %f\n", my_rank, k, U_arr_part [k][task_size]);
 			}
 
+			print_array_to_file ("parallel_solution_part.csv", U_arr_part, K + 1, task_size + 1);	
     		free_2D_array (U_arr_part, K + 1);
 		}
 	}

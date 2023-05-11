@@ -30,10 +30,10 @@ int main (int argc, char *argv [])
 	const int M = 20; // maximum number of element of x axis
 	const double h = X / M; // x step
 
-	double ** U_arr = allocate_2D_array (K + 1, M + 1);
-
 	MPI_Init (&argc, &argv); // MPI is used only for time measurement
 	double t_start = MPI_Wtime ();
+
+	double ** U_arr = allocate_2D_array (K + 1, M + 1);
 
 	for (int m = 0; m < M + 1; m++) // set boundary condition for t = 0
 	{
