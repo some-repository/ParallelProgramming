@@ -26,17 +26,30 @@ void print_array_to_file (const char * filename, double ** arr, size_t str_num, 
 
 int main (int argc, char *argv [])
 {
+	MPI_Init (&argc, &argv); // MPI is used only for time measurement
+
+	size_t K_var = 1000; // default value
+	size_t M_var = 100000; // default value
+
+	if (argc == 3) // if the number of entered CLI args is 2
+	{
+		K_var = atoi (argv [1]); // maximum number of element of t axis
+		M_var = atoi (argv [2]); // maximum number of element of x axis
+	}
+
+	const size_t K = K_var; // maximum number of element of t axis
+	const size_t M = M_var; // maximum number of element of x axis
+
 	const double a = 2; // coefficient of the differential equation
 
 	const double T = 1; // maximum value of t axis
-	const int K = 1000; // maximum number of element of t axis
 	const double tau = T / K; // time step
 
 	const double X = 1; // maximum value of x axis
-	const int M = 1000; // maximum number of element of x axis
 	const double h = X / M; // x step
 
-	MPI_Init (&argc, &argv); // MPI is used only for time measurement
+	printf ("K = %ld, M = %ld\n", K, M);
+
 	double t_start = MPI_Wtime ();
 
 	double ** U_arr = allocate_2D_array (K + 1, M + 1);
